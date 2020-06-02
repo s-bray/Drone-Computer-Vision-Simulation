@@ -1,0 +1,119 @@
+#!/usr/bin/env python
+from __future__ import print_function
+
+import roslib
+roslib.load_manifest('hector_highlevel_controller')
+import sys
+import rospy
+import cv2
+import numpy as np
+from std_msgs.msg import String
+from sensor_msgs.msg import Image
+
+
+from cv_bridge import CvBridge, CvBridgeError
+import argparse
+import cv2
+
+class image_converter:
+
+  def __init__(self):
+    self.image_pub = rospy.Publisher("/command/pose_marker",Image)
+
+    self.bridge = CvBridge()
+    self.image_sub = rospy.Subscriber("/front_cam/camera/image",Image,self.callback)
+
+  def callback(self,data):
+    try:
+      cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+    except CvBridgeError as e:
+      print(e)
+
+    (rows,cols,channels) = cv_image.shape
+    if cols > 60 and rows > 60 :
+      cv2.circle(cv_image, (50,50), 10, 255)
+    
+    
+    
+    print("Image Proccesing undergoing.........")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-i", "--cv_image", help = "path to the image")
+    args = vars(ap.parse_args())
+    
+    image = cv2.imread(args["cv_image"])
+ 
+
+    boundaries = [
+	([255, 0, 0], [255, 0, 0]),
+	([255, 0, 0], [255, 0, 0]),
+	([255, 0, 0], [255, 0, 0]),
+	([255, 0, 0], [255, 0, 0])
+                 ]
+    
+    
+    for (lower, upper) in boundaries:
+
+        lower = np.array(lower, dtype = "uint8")
+        upper = np.array(upper, dtype = "uint8")
+    
+    mask = cv2.inRange(cv_image, lower, upper)
+    output = cv2.bitwise_and(cv_image, cv_image, mask = mask)
+
+    start_point = (60, 60) 
+    end_point = (220,220)
+    color = (0, 255, 0)
+    thickness = 2
+       
+    frame = cv2.imshow("Image window", output)
+    cv2.imshow("Image_windoW",mask)
+    cv2.imshow("Image_Window",cv_image)
+    (b, g, r) = cv_image[110, 110]
+
+ 
+    gray = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY) 
+    ret , thresh = cv2.threshold(gray, 127, 255, 0)
+
+ 
+ 
+
+    contours = cv2.findContours(mask,cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[1] 
+
+     
+  
+    print("Number of Contours found = " + str(len(contours))) 
+  
+
+   
+    cnt = cv2.drawContours(output,contours, -1, (0,255,0), 3)
+    
+    cv2.imshow('Contours',cnt) 
+    print("Pixel at (110, 110) - Red: {}, Green: {}, Blue: {}".format(r,g, b))
+    if (len(contours)==2):
+    	print("Target person detected")
+        cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+
+        cv_image = cv2.rectangle(cv_image, start_point, end_point, color, thickness)
+        cnt = cv2.drawContours(cv_image,contours, -1, (0,0,255), 3)
+  
+        cv2.imshow("Image_Window",cv_image)
+
+    
+    
+    cv2.waitKey(3)
+
+    try:
+      self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+    except CvBridgeError as e:
+      print(e)
+
+def main(args):
+  ic = image_converter()
+  rospy.init_node('image_converter', anonymous=True)
+  try:
+    rospy.spin()
+  except KeyboardInterrupt:
+    print("Shutting down")
+  cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+    main(sys.argv)

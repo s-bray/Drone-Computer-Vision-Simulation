@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
+#Importing Nescessary Libraries
+
 import roslib
+#Package created by me 'Hector Highlevel Controller'
 roslib.load_manifest('hector_highlevel_controller')
 import sys
 import rospy
@@ -14,6 +17,8 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import argparse
 import cv2
+
+#Class defined to convert image using Cv_bridge
 
 class image_converter:
 
@@ -42,6 +47,7 @@ class image_converter:
     
     image = cv2.imread(args["cv_image"])
  
+#Code block for color detection 
 
     boundaries = [
 	([255, 0, 0], [255, 0, 0]),
@@ -59,6 +65,8 @@ class image_converter:
     mask = cv2.inRange(cv_image, lower, upper)
     output = cv2.bitwise_and(cv_image, cv_image, mask = mask)
 
+#Code block for Rectangular Block
+
     start_point = (60, 60) 
     end_point = (220,220)
     color = (0, 255, 0)
@@ -74,7 +82,7 @@ class image_converter:
     ret , thresh = cv2.threshold(gray, 127, 255, 0)
 
  
- 
+#Code block for Contours 
 
     contours = cv2.findContours(mask,cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[1] 
 
@@ -86,9 +94,15 @@ class image_converter:
    
     cnt = cv2.drawContours(output,contours, -1, (0,255,0), 3)
     
-    cv2.imshow('Contours',cnt) 
+    cv2.imshow('Contours',cnt)
+   
+    #printing RGB values
+
     print("Pixel at (110, 110) - Red: {}, Green: {}, Blue: {}".format(r,g, b))
-    if (len(contours)==2):
+
+    #if len(contours) >= 2 then target object is detected
+
+    if (len(contours)>=2):
     	print("Target person detected")
         cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
 
@@ -117,3 +131,4 @@ def main(args):
 
 if __name__ == '__main__':
     main(sys.argv)
+
